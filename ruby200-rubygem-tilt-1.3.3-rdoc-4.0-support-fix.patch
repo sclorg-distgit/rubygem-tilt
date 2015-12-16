@@ -1,0 +1,79 @@
+From d0132af880610fd899884609ad43ae3a862c587a Mon Sep 17 00:00:00 2001
+From: Magnus Holm <judofyr@gmail.com>
+Date: Mon, 25 Feb 2013 19:13:07 +0100
+Subject: [PATCH] Support RDoc 4.0
+
+---
+ lib/tilt/rdoc.rb | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/lib/tilt/rdoc.rb b/lib/tilt/rdoc.rb
+index 6090600..ae7e506 100644
+--- a/lib/tilt/rdoc.rb
++++ b/lib/tilt/rdoc.rb
+@@ -11,7 +11,7 @@ class RDocTemplate < Template
+     self.default_mime_type = 'text/html'
+ 
+     def self.engine_initialized?
+-      defined? ::RDoc::Markup
++      defined? ::RDoc::Markup::ToHtml
+     end
+ 
+     def initialize_engine
+@@ -20,8 +20,16 @@ def initialize_engine
+       require_template_library 'rdoc/markup/to_html'
+     end
+ 
++    def markup
++      begin
++        require 'rdoc/options'
++        RDoc::Markup::ToHtml.new(RDoc::Options.new, nil)
++      rescue ArgumentError
++        RDoc::Markup::ToHtml.new
++      end
++    end
++
+     def prepare
+-      markup = RDoc::Markup::ToHtml.new
+       @engine = markup.convert(data)
+       @output = nil
+     end
+-- 
+1.8.1.6
+From aaffdb1248bc02aac1e1dfb036d9b245de451411 Mon Sep 17 00:00:00 2001
+From: Magnus Holm <judofyr@gmail.com>
+Date: Mon, 25 Feb 2013 19:12:38 +0100
+Subject: [PATCH] Make RDoc tests less specific
+
+---
+ test/tilt_rdoctemplate_test.rb | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/test/tilt_rdoctemplate_test.rb b/test/tilt_rdoctemplate_test.rb
+index 33d8e20..5a729ea 100644
+--- a/test/tilt_rdoctemplate_test.rb
++++ b/test/tilt_rdoctemplate_test.rb
+@@ -12,12 +12,18 @@ class RDocTemplateTest < Test::Unit::TestCase
+ 
+     test "preparing and evaluating the template with #render" do
+       template = Tilt::RDocTemplate.new { |t| "= Hello World!" }
+-      assert_equal "<h1>Hello World!</h1>", template.render.strip
++      result = template.render.strip
++      assert_match /<h1/, result
++      assert_match />Hello World!</, result
+     end
+ 
+     test "can be rendered more than once" do
+       template = Tilt::RDocTemplate.new { |t| "= Hello World!" }
+-      3.times { assert_equal "<h1>Hello World!</h1>", template.render.strip }
++      3.times do
++        result = template.render.strip
++        assert_match /<h1/, result
++        assert_match />Hello World!</, result
++      end
+     end
+   end
+ rescue LoadError => boom
+-- 
+1.8.1.6
+
